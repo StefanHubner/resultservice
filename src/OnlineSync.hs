@@ -5,6 +5,7 @@ import Network.HTTP.Client
 import Network.HTTP.Client.MultipartFormData
 import Network.HTTP.Types
 
+import GHC.Generics
 import Control.Applicative
 import System.IO
 import Control.DeepSeq
