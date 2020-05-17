@@ -12,11 +12,14 @@ import Control.DeepSeq
 import Data.Binary (Binary, encode, decode)
 import Data.Maybe
 import Data.Text (pack, unpack)
+import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.ByteString.Char8 as BI
 
 data Connection = Connection { server :: String, port :: Integer } deriving (Generic)
+instance A.FromJSON Connection
+instance A.ToJSON Connection
 
 instance Show Connection where
     show (Connection s p) = "http://" ++ s ++ ":" ++ show p
