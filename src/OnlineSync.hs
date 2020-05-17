@@ -1,5 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
-module OnlineSync where
+module OnlineSync (
+    Connection (..),
+    seemless,
+    tryResult,
+    postResults) where
 
 import Network.HTTP.Client
 import Network.HTTP.Client.MultipartFormData
@@ -34,12 +38,12 @@ tryResult con name = (pure (decode . Z.decompress) <*>) <$> getResults con name
 
 maybeCompute :: Binary a => Connection -> String -> a -> Maybe a ->IO a
 maybeCompute _   name _           (Just x) = return x
-maybeCompute con name computation Nothing  = postResults con name ((Z.compress . encode) computation) >> return computation
+maybeCompute con name computation Nothing  = postResults con name (encode computation) >> return computation
 
 postResults :: Connection -> String -> B.ByteString -> IO ()
 postResults con name object = do
     let fn = "/tmp/" ++ name
-    B.writeFile fn object
+    B.writeFile fn (Z.compress object)
     manager <- newManager defaultManagerSettings
     initialRequest <- parseRequest $ show con ++ "/results/post"
     let request = initialRequest { method = BI.pack "POST" }
