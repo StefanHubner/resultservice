@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module OnlineSync where
 
 import Network.HTTP.Client
@@ -14,32 +15,37 @@ import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.ByteString.Char8 as BI
 
-seemless :: Binary a => String -> String -> a -> IO a
-seemless url name computation  = tryResult url name >>= maybeCompute url name computation
+data Connection = Connection { server :: String, port :: Integer } deriving (Generic)
 
-tryResult :: Binary a => String -> String -> IO (Maybe a)
-tryResult url name = (pure decode <*>) <$> getResults url name
+instance Show Connection where
+    show (Connection s p) = "http://" ++ s ++ ":" ++ show p
 
-maybeCompute :: Binary a => String -> String -> a -> Maybe a ->IO a
+seemless :: Binary a => Connection -> String -> a -> IO a
+seemless con name computation  = tryResult con name >>= maybeCompute con name computation
+
+tryResult :: Binary a => Connection -> String -> IO (Maybe a)
+tryResult con name = (pure decode <*>) <$> getResults con name
+
+maybeCompute :: Binary a => Connection -> String -> a -> Maybe a ->IO a
 maybeCompute _   name _           (Just x) = return x
-maybeCompute url name computation Nothing  = postResults url name (encode computation) >> return computation
+maybeCompute con name computation Nothing  = postResults con name (encode computation) >> return computation
 
-postResults :: String -> String -> B.ByteString -> IO ()
-postResults url name object = do
+postResults :: Connection -> String -> B.ByteString -> IO ()
+postResults con name object = do
     let fn = "/tmp/" ++ name
     B.writeFile fn object
     manager <- newManager defaultManagerSettings
-    initialRequest <- parseRequest $ url ++ "/results/post" 
+    initialRequest <- parseRequest $ show con ++ "/results/post"
     let request = initialRequest { method = BI.pack "POST" }
-    mfd <- formDataBody [ partFileSource (pack name) fn ] request 
+    mfd <- formDataBody [ partFileSource (pack name) fn ] request
     print mfd
     response <- httpLbs mfd manager
     return()
 
-getResults :: String -> String -> IO (Maybe B.ByteString)
-getResults url name = do
+getResults :: Connection -> String -> IO (Maybe B.ByteString)
+getResults con name = do
     manager <- newManager defaultManagerSettings
-    initialRequest <- parseRequest $ url ++ "/results/get/" ++ name
+    initialRequest <- parseRequest $ show con ++ "/results/get/" ++ name
     let request = initialRequest { method = BI.pack "GET" }
     response <- httpLbs request manager
     print response
