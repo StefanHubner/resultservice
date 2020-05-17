@@ -17,6 +17,8 @@ import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.ByteString.Char8 as BI
 
+import qualified Codec.Compression.Zlib as Z (compress, decompress)
+
 data Connection = Connection { server :: String, port :: Integer } deriving (Generic)
 instance A.FromJSON Connection
 instance A.ToJSON Connection
@@ -28,11 +30,11 @@ seemless :: Binary a => Connection -> String -> a -> IO a
 seemless con name computation  = tryResult con name >>= maybeCompute con name computation
 
 tryResult :: Binary a => Connection -> String -> IO (Maybe a)
-tryResult con name = (pure decode <*>) <$> getResults con name
+tryResult con name = (pure (decode . Z.decompress) <*>) <$> getResults con name
 
 maybeCompute :: Binary a => Connection -> String -> a -> Maybe a ->IO a
 maybeCompute _   name _           (Just x) = return x
-maybeCompute con name computation Nothing  = postResults con name (encode computation) >> return computation
+maybeCompute con name computation Nothing  = postResults con name ((Z.compress . encode) computation) >> return computation
 
 postResults :: Connection -> String -> B.ByteString -> IO ()
 postResults con name object = do
