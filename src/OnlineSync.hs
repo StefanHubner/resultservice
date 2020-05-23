@@ -3,6 +3,7 @@ module OnlineSync (
     Connection (..),
     seemless,
     tryResult,
+    postUncompressedFile,
     postResults) where
 
 import Network.HTTP.Client
@@ -40,6 +41,9 @@ maybeCompute :: Binary a => Connection -> String -> a -> Maybe a ->IO a
 maybeCompute _   name _           (Just x) = return x
 maybeCompute con name computation Nothing  = postResults con name (encode computation) >> return computation
 
+postUncompressedFile :: Connection -> String -> String -> IO ()
+postUncompressedFile con fn name = B.readFile fn >>= postResults con name
+
 postResults :: Connection -> String -> B.ByteString -> IO ()
 postResults con name object = do
     let fn = "/tmp/" ++ name
@@ -48,7 +52,7 @@ postResults con name object = do
     initialRequest <- parseRequest $ show con ++ "/results/post"
     let request = initialRequest { method = BI.pack "POST" }
     mfd <- formDataBody [ partFileSource (pack name) fn ] request
-    print mfd
+    putStrLn $ "Posting object " ++ name ++ " to " ++ show con
     response <- httpLbs mfd manager
     return()
 
@@ -58,5 +62,5 @@ getResults con name = do
     initialRequest <- parseRequest $ show con ++ "/results/get/" ++ name
     let request = initialRequest { method = BI.pack "GET" }
     response <- httpLbs request manager
-    print response
+    putStrLn $ "Request to " ++ show con ++ " to get: " ++ name ++ " with response status " ++ (show . statusCode . responseStatus $ response)
     return $ if responseStatus response == ok200 then Just (responseBody response) else Nothing

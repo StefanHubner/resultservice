@@ -63,6 +63,8 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - resultservice
+    - bytestring
+    - binary
 
 tests:
   resultservice-test:
