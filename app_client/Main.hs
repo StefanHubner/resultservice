@@ -8,10 +8,13 @@ import OnlineSync
 
 main :: IO()
 main = do
-    let computation = [1..10]
-    let name = "simpleListCompressed"
-    res <- seemless (Connection "stefan.hubner.info" 8080) name computation :: IO [Int]
+    let computation = [1..20] :: [Integer]
+    let name = "testChunked"
+    res <- seemless (Connection "stefan.hubner.info" 8080) name computation :: IO [Integer]
     print res
+    complex <- tryResult (Connection "stefan.hubner.info" 8080) "liss.private.mip.het" :: IO (Maybe [Result])
+    print complex
+    --mainOnce
 
 
 -- one off, commit all local files to server (should not be here)
@@ -41,15 +44,15 @@ mainOnce = do
                 , ("results.nohet.public/rolling.300.bin",                 "russian.public.nomip.nohet")
                 , ("results.spanish.private/rolling.300.bin",              "spanish.private.nomip.nohet")
                 , ("results.spanish.public/rolling.300.bin",               "spanish.public.nomip.nohet")]
-    mapM_ (uncurry $ postOnce con) fsnso
+    mapM_ (uncurry $ postOnce con) fsnsn
 
 
 postOnce :: Connection -> String -> String -> IO()
 postOnce con fn name = do
     let p = "/home/hubner/Dropbox/Academia/projects/scarp/scarp/utilities/"
     encoded <- B.readFile (p++fn)
-    let decoded = decode encoded :: [OldResult] -- Result vs OldResult
-    postResults con name (encode . map parseResult $ decoded) -- id vs parseResult
+    let decoded = decode encoded :: [Result] -- Result vs OldResult
+    postResults con name (encode . map id $ decoded) -- id vs parseResult
     test <- tryResult con name :: IO (Maybe [Result])
     print test
     return ()

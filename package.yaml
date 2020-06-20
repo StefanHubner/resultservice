@@ -33,6 +33,7 @@ library:
     - deepseq
     - aeson
     - zlib
+    - transformers
 
 executables:
   resultservice-exe:

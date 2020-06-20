@@ -4,7 +4,9 @@ module OnlineSync (
     seemless,
     tryResult,
     postUncompressedFile,
-    postResults) where
+    postResults,
+    getResults,
+    getChunk) where
 
 import Network.HTTP.Client
 import Network.HTTP.Client.MultipartFormData
@@ -14,13 +16,16 @@ import GHC.Generics
 import Control.Applicative
 import System.IO
 import Control.DeepSeq
+import Control.Monad (zipWithM_)
+import Control.Monad.Trans.Maybe
 import Data.Binary (Binary, encode, decode)
 import Data.Maybe
 import Data.Text (pack, unpack)
+import Data.List (sort)
 import qualified Data.Aeson as A
-import qualified Data.ByteString.Lazy as B
-import qualified Data.ByteString.Lazy.Char8 as BS
-import qualified Data.ByteString.Char8 as BI
+import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Char8 as Strict
+import qualified Data.ByteString.Lazy.Char8 as Lazy
 
 import qualified Codec.Compression.Zlib as Z (compress, decompress)
 
@@ -42,25 +47,63 @@ maybeCompute _   name _           (Just x) = return x
 maybeCompute con name computation Nothing  = postResults con name (encode computation) >> return computation
 
 postUncompressedFile :: Connection -> String -> String -> IO ()
-postUncompressedFile con fn name = B.readFile fn >>= postResults con name
+postUncompressedFile con fn name = Lazy.readFile fn >>= postResults con name
 
-postResults :: Connection -> String -> B.ByteString -> IO ()
+suffix :: Int -> String
+suffix j
+   | j == 0 = ""
+   | otherwise = "." ++ show j
+
+postChunk :: Manager -> Request -> String -> Strict.ByteString -> Int -> IO ()
+postChunk manager request name chunk i = do
+    let fn = "/tmp/" ++ name ++ suffix i
+    Strict.writeFile fn chunk
+    mfd <- formDataBody [ partFileSource (pack name) fn ] request
+    putStr $ " - " ++ name ++ "(part " ++ show i ++ ")"
+    response <- httpLbs mfd manager
+    putStrLn $ ": " ++ (show . statusCode . responseStatus $ response)
+    return ()
+
+postResults :: Connection -> String -> Lazy.ByteString -> IO ()
 postResults con name object = do
-    let fn = "/tmp/" ++ name
-    B.writeFile fn (Z.compress object)
     manager <- newManager defaultManagerSettings
     initialRequest <- parseRequest $ show con ++ "/results/post"
-    let request = initialRequest { method = BI.pack "POST" }
-    mfd <- formDataBody [ partFileSource (pack name) fn ] request
-    putStrLn $ "Posting object " ++ name ++ " to " ++ show con
-    response <- httpLbs mfd manager
-    return()
+    let request = initialRequest { method = Strict.pack "POST" }
+    putStrLn $ "Posting object to: " ++ show con
+    zipWithM_ (postChunk manager request name) (rechunk $ Z.compress object) [0,1..]
 
-getResults :: Connection -> String -> IO (Maybe B.ByteString)
+getChunk :: Manager -> Connection -> String -> IO (Maybe Lazy.ByteString)
+getChunk manager con name = do
+    irGet <- parseRequest $ show con ++ "/results/get/" ++ name
+    let request = irGet { method = Strict.pack "GET" }
+    response <- httpLbs request manager
+    putStrLn $ " - " ++ (show . statusCode . responseStatus $ response)
+    return $ if responseStatus response == ok200 -- all/and
+             then Just (responseBody response)
+             else Nothing
+
+getResults :: Connection -> String -> IO (Maybe Lazy.ByteString)
 getResults con name = do
     manager <- newManager defaultManagerSettings
-    initialRequest <- parseRequest $ show con ++ "/results/get/" ++ name
-    let request = initialRequest { method = BI.pack "GET" }
+    irQuery <- parseRequest $ show con ++ "/results/query/" ++ name
+    let request = irQuery { method = Strict.pack "GET" }
     response <- httpLbs request manager
-    putStrLn $ "Request to " ++ show con ++ " to get: " ++ name ++ " with response status " ++ (show . statusCode . responseStatus $ response)
-    return $ if responseStatus response == ok200 then Just (responseBody response) else Nothing
+    let names = fromMaybe [] (sort <$> A.decode (responseBody response) :: Maybe [String]) -- from parse
+    putStrLn $ "Request to " ++ show con
+               ++ " to get: " ++ name ++ ": "
+    maybeChunkList <- mapM (getChunk manager con) names -- maybe from getchunk
+    return (Lazy.concat <$> (emptyToNothing . sequence) maybeChunkList)
+
+emptyToNothing :: Maybe [a] -> Maybe [a]
+emptyToNothing Nothing = Nothing
+emptyToNothing (Just []) = Nothing
+emptyToNothing (Just x) = Just x
+
+rechunk :: Lazy.ByteString -> [Strict.ByteString]
+rechunk s
+    | Lazy.null s = []
+    | otherwise = let (pref, suff) = Lazy.splitAt chunkSize s
+                  in repack pref : rechunk suff
+        where
+            chunkSize = 20 * 1024 * 1024 -- 20 MB
+            repack = Strict.concat . Lazy.toChunks
