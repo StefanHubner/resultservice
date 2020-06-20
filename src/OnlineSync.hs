@@ -13,6 +13,7 @@ import Network.HTTP.Client.MultipartFormData
 import Network.HTTP.Types
 
 import GHC.Generics
+import Text.Printf
 import Control.Applicative
 import System.IO
 import Control.DeepSeq
@@ -52,7 +53,7 @@ postUncompressedFile con fn name = Lazy.readFile fn >>= postResults con name
 suffix :: Int -> String
 suffix j
    | j == 0 = ""
-   | otherwise = "." ++ show j
+   | otherwise = printf ".%03d" j
 
 postChunk :: Manager -> Request -> String -> Strict.ByteString -> Int -> IO ()
 postChunk manager request name chunk i = do
