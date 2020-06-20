@@ -53,7 +53,7 @@ postUncompressedFile con fn name = Lazy.readFile fn >>= postResults con name
 suffix :: Int -> String
 suffix j
    | j == 0 = ""
-   | otherwise = printf ".%03d" j
+   | otherwise = printf ".%02d" j
 
 postChunk :: Manager -> Request -> String -> Strict.ByteString -> Int -> IO ()
 postChunk manager request name chunk i = do
