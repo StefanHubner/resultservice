@@ -10,11 +10,14 @@ main :: IO()
 main = do
     let computation = [1..20] :: [Integer]
     let name = "testChunked"
-    res <- seemless (Connection "stefan.hubner.info" 8080) name computation :: IO [Integer]
+    let con = Connection "stefan.hubner.info" 8080
+    res <- seemless con name computation :: IO [Integer]
     print res
-    complex <- tryResult (Connection "stefan.hubner.info" 8080) "liss.private.mip.het" :: IO (Maybe [Result])
+    complex <- tryResult con "liss.private.mip.het" :: IO (Maybe [Result])
     print complex
-    --mainOnce
+    alH <- tryResult con "smHmipFalse" :: IO (Maybe ([(Int, Int, Double)], Int))
+    print $ (head . fst) <$> alH
+    --convertOnce
 
 
 -- one off, commit all local files to server (should not be here)
@@ -24,8 +27,8 @@ type OldResult = ([String], (Double, [[Int]]))
 parseResult :: OldResult -> Result
 parseResult (ys, r) = ((ys, []), r)
 
-mainOnce :: IO ()
-mainOnce = do
+convertOnce :: IO ()
+convertOnce = do
     let con = Connection "stefan.hubner.info" 8080
     let fsnsn = [ ("results.liss.ec.private/results.300.het.50avg.bin",    "liss.ec.private.nomip.het.50avg")
                 , ("results.liss.ec.private/results.300.het.bin",          "liss.ec.private.nomip.het")

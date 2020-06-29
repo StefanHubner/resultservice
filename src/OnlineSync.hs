@@ -78,7 +78,7 @@ getChunk manager con name = do
     irGet <- parseRequest $ show con ++ "/results/get/" ++ name
     let request = irGet { method = Strict.pack "GET" }
     response <- httpLbs request manager
-    putStrLn $ " - " ++ (show . statusCode . responseStatus $ response)
+    putStrLn $ " - " ++ name ++ ": " ++ (show . statusCode . responseStatus $ response)
     return $ if responseStatus response == ok200 -- all/and
              then Just (responseBody response)
              else Nothing
