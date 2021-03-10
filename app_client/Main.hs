@@ -15,7 +15,7 @@ main = do
     print res
     complex <- tryResult con "liss.private.mip.het" :: IO (Maybe [Result])
     print complex
-    alH <- tryResult con "smHmipFalse" :: IO (Maybe ([(Int, Int, Double)], Int))
+    alH <- tryResult con "smHmipTrue" :: IO (Maybe ([(Int, Int, Double)], Int))
     print $ (head . fst) <$> alH
     --convertOnce
 

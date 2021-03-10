@@ -4,9 +4,7 @@ module OnlineSync (
     seemless,
     tryResult,
     postUncompressedFile,
-    postResults,
-    getResults,
-    getChunk) where
+    postResults) where
 
 import Network.HTTP.Client
 import Network.HTTP.Client.MultipartFormData
