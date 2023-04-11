@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3d635ee8d0a69159f6113742f46f66d1fd6c310f37deca7f4b6450e3c97768ff
+-- hash: 6de20457d6f736a612232030da6e77d35c64d9b3cfc015a639c22db19d374f22
 
 name:           resultservice
 version:        0.1.0.0
@@ -74,8 +74,10 @@ executable resultservice-exe
     , directory
     , http-client
     , http-types
+    , postgresql-simple
     , resultservice
     , scotty
+    , sqlite-simple
     , text
     , wai-extra
   default-language: Haskell2010
