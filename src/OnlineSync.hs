@@ -28,7 +28,7 @@ import qualified Data.ByteString.Lazy.Char8 as Lazy
 
 import qualified Codec.Compression.Zlib as Z (compress, decompress)
 
-data Connection = Connection { server :: String, port :: Integer } deriving (Generic)
+data Connection = Connection { server :: !String, port :: !Integer } deriving (Generic)
 instance A.FromJSON Connection
 instance A.ToJSON Connection
 
